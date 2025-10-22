@@ -1,12 +1,12 @@
 ## Team
 - **Member 1 — Victor Hurst** — victor.hurst@mail.utoronto.ca
-- **Member 2 — Full Name** — Role(s)
+- **Member 2 — Janani Gurram** — j.gurram@mail.utoronto.ca
 
 ## Contributions (per member)
 - **Victor Hurst**
   - Tasks: Handling the ARP Cache, IP Forwarding, Creating The Frames (Ethernet, IP,  ARP Requests etc.), ICMP Messages, ARP Replies and Requests, Handling IP Requests
 - **Member 2**
-  - Tasks: All Of Testing, ARP Cache,  IP Forwarding, ICMP Messages, ICMP Messages
+  - Tasks: All Of Testing, ARP Cache,  IP Forwarding, ICMP Messages, ARP Replies and Requests
  
 ## Implemented functions / files
 
@@ -63,3 +63,35 @@
 - **Arguments:**
   - `sr` – Router instance
   - `arp_hdr` – ARP header (`struct sr_arp_hdr *`)
+ 
+## Testing
+
+Notes: After pulling the code, you may need to give executable permission to files and recreate auth_key and pox symbolic links.
+
+We tested by running the following commands (on the mininet cli) using our router and comparing it to the sample solution router using wireshark. We ensured that all commands were working as expected and the same requests/responses were sent by our solution and the sample.
+1) Ping from client to router interfaces
+   - `client ping -c 3 192.168.2.1`
+   - `client ping -c 3 172.64.3.1`
+   - `client ping -c 3 10.0.1.1`
+   - What requirements this tests: ICMP echo replies to router interface addresses demonstrate the router correctly recognizes and answers ICMP destined to itself (requirement: ICMP echo reply).
+
+2) Traceroute from client to router interfaces
+   - `client traceroute -n 192.168.2.1`
+   - `client traceroute -n 172.64.3.1`
+   - `client traceroute -n 10.0.1.1`
+   - What requirements this tests: traceroute uses ICMP (and TTL expiration); correct intermediate behavior indicates router decrements TTL, generates ICMP Time Exceeded when appropriate, and participates correctly in forwarding/traceroutes.
+
+3) Ping from client to application servers
+   - `client ping -c 3 192.168.2.2`
+   - `client ping -c 3 172.64.3.10`
+   - What requirements this tests: demonstrates the forwarding path (longest-prefix route lookup, ARP resolution, setting correct destination MAC, and forwarding) works from client → server.
+
+4) Traceroute from client to application servers
+   - `client traceroute -n 192.168.2.2`
+   - `client traceroute -n 172.64.3.10`
+   - What requirements this tests: traceroutes that reach the servers confirm that IP forwarding and TTL/ICMP behavior across hops are correct.
+
+5) HTTP download from application servers
+   - `client wget http://192.168.2.2`
+   - `client wget http://172.64.3.10`
+   - What requirements this tests: demonstrating a successful HTTP request/response proves forwarding of TCP and correct two-way connectivity between client and server.

@@ -36,38 +36,41 @@ void send_arp_request(struct sr_instance* sr,
   checking whether we should resend an request or destroy the arp request.
   See the comments in the header file for an idea of what it should look like.
 */
+/* fyi, the recursive mutex lock is acquire before this by the sweeping thread */
 void sr_arpcache_sweepreqs(struct sr_instance *sr) { 
     /* Fill this in */
-    /* This function has to many indents for now may wanna fix it*/
     struct sr_arpreq *req = sr->cache.requests;
-
 
     /* traverse the linked list of ARP requests */
     while (req) {
         struct sr_arpreq *next_req = req->next; 
-        time_t now = time(NULL);
-
-        /* if it has been more than SR_ARPCACHE_REQ_TO seconds since last req sent */
-        if (difftime(now, req->sent) > SR_ARPCACHE_REQ_TO) {
-            printf("%d", req->times_sent);
-            /* and we have sent it SR_ARPCACHE_MAX_REQ times already */
-            if (req->times_sent >= SR_ARPCACHE_MAX_REQ) {
-                /* send ICMP host unreachable to all packets waiting on this request */
-                struct sr_packet *pkt = req->packets;
-                while (pkt) {
-                    send_icmp_request(sr, pkt->buf, pkt->iface, ICMP_DEST_UNREACH, ICMP_HOST_UNREACH);
-                    pkt = pkt->next;
-                }
-                sr_arpreq_destroy(&sr->cache, req);
-            /* otherwise, send another ARP request */
-            } else {
-                /* could get rid of some arguments here but im lazy */
-                send_arp_request(sr, req->ip, req->packets->iface, req);
-            }
-        }
-
+        handle_arpreq(sr, req);
         req = next_req; 
     }
+}
+
+void handle_arpreq(struct sr_instance* sr, struct sr_arpreq* req) {
+    pthread_mutex_lock(&(sr->cache.lock));
+    time_t now = time(NULL);
+
+    /* if it has been more than SR_ARPCACHE_REQ_TO seconds since last req sent */
+    if (difftime(now, req->sent) > SR_ARPCACHE_REQ_TO) {
+        printf("%d", req->times_sent);
+        /* and we have sent it SR_ARPCACHE_MAX_REQ times already */
+        if (req->times_sent >= SR_ARPCACHE_MAX_REQ) {
+            /* send ICMP host unreachable to all packets waiting on this request */
+            struct sr_packet *pkt = req->packets;
+            while (pkt) {
+                send_icmp_request(sr, pkt->buf, pkt->iface, ICMP_DEST_UNREACH, ICMP_HOST_UNREACH);
+                pkt = pkt->next;
+            }
+            sr_arpreq_destroy(&sr->cache, req);
+        /* otherwise, send another ARP request */
+        } else {
+            send_arp_request(sr, req->ip, req->packets->iface, req);
+        }
+    }
+    pthread_mutex_unlock(&(sr->cache.lock));
 }
 
 /* You should not need to touch the rest of this code. */
@@ -296,4 +299,3 @@ void *sr_arpcache_timeout(void *sr_ptr) {
     
     return NULL;
 }
-

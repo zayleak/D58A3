@@ -384,9 +384,9 @@ void forward_ip_packet(struct sr_instance* sr,
     } else {
         printf("Queuing ARP request for IP: ");
         print_addr_ip_int(next_hop_ip);
-        struct sr_arpreq* queued_entry = sr_arpcache_queuereq(&sr->cache, next_hop_ip, packet, len, out_iface->name);
+        struct sr_arpreq* queued_req = sr_arpcache_queuereq(&sr->cache, next_hop_ip, packet, len, out_iface->name);
         /* handle sending ARP request if necessary */
-        /* send_arp_request(sr, next_hop_ip, out_iface->name, queued_entry); */
+        handle_arpreq(sr, queued_req);
     }
 
 }

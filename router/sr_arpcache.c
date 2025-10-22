@@ -11,6 +11,26 @@
 #include "sr_if.h"
 #include "sr_protocol.h"
 
+void send_arp_request(struct sr_instance* sr,
+        uint32_t target_ip,
+        char* out_iface,
+        struct sr_arpreq *req
+    ) {
+    struct sr_if* iface = sr_get_interface(sr, out_iface);
+    uint8_t* arp_request_packet = construct_arp_request_packet(iface, target_ip);
+    if (arp_request_packet) {
+        if (sr_send_packet(sr, arp_request_packet, sizeof(struct sr_ethernet_hdr) + sizeof(struct sr_arp_hdr), out_iface) != 0) {
+            printf("Failed to send ARP request packet\n");
+        } else {
+            req->sent = time(NULL);
+            req->times_sent++;
+        }
+        free(arp_request_packet);
+    } else {
+        printf("Failed to construct ARP request packet\n");
+    }
+}
+
 /* 
   This function gets called every second. For each request sent out, we keep
   checking whether we should resend an request or destroy the arp request.
@@ -41,21 +61,8 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr) {
                 sr_arpreq_destroy(&sr->cache, req);
             /* otherwise, send another ARP request */
             } else {
-                struct sr_if* out_iface = sr_get_interface(sr, req->packets->iface);
-                uint8_t* arp_request_packet = construct_arp_request_packet(out_iface, req->ip);
-                 /* send arp request */
-                if (arp_request_packet) {
-                    if (sr_send_packet(sr, arp_request_packet, sizeof(struct sr_ethernet_hdr) + sizeof(struct sr_arp_hdr), out_iface->name) != 0) {
-                        printf("Failed to send ARP request packet\n");
-                    } else {
-                        req->sent = now;
-                        req->times_sent++;
-                    }
-                    
-                    free(arp_request_packet);
-                } else {
-                    printf("Failed to construct ARP request packet\n");
-                }
+                /* could get rid of some arguments here but im lazy */
+                send_arp_request(sr, req->ip, req->packets->iface, req);
             }
         }
 
@@ -102,8 +109,9 @@ struct sr_arpreq *sr_arpcache_queuereq(struct sr_arpcache *cache,
                                        uint8_t *packet,           /* borrowed */
                                        unsigned int packet_len,
                                        char *iface)
-{
-    pthread_mutex_lock(&(cache->lock));
+{   
+
+    pthread_mutex_lock(&(cache->lock)); 
     
     struct sr_arpreq *req;
     for (req = cache->requests; req != NULL; req = req->next) {
@@ -114,6 +122,7 @@ struct sr_arpreq *sr_arpcache_queuereq(struct sr_arpcache *cache,
     
     /* If the IP wasn't found, add it */
     if (!req) {
+        printf("Creating new ARP request for an IP\n");
         req = (struct sr_arpreq *) calloc(1, sizeof(struct sr_arpreq));
         req->ip = ip;
         req->next = cache->requests;

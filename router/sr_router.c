@@ -332,6 +332,7 @@ void forward_ip_packet(struct sr_instance* sr,
     /* decrement the ttl since we are forwarding the packet */
     ip_hdr->ip_ttl -= 1;
     /* if the ttl is 0, we discard the packet and send an ICMP Time Exceeded message */
+    printf("New TTL: %d\n", ip_hdr->ip_ttl);
     if (ip_hdr->ip_ttl == ICMP_TTL_EXPIRED) {
         printf("TTL expired, need to send ICMP Time Exceeded\n");
         send_icmp_request(sr, packet, interface, ICMP_TIME_EXCEEDED, ICMP_TTL_EXPIRED);
@@ -381,8 +382,11 @@ void forward_ip_packet(struct sr_instance* sr,
         free(arp_entry);
     /* otherwise, we need to queue the packet for later */
     } else {
-        printf("No ARP entry found, queuing ARP request\n");
-        sr_arpcache_queuereq(&sr->cache, next_hop_ip, packet, len, out_iface->name);
+        printf("Queuing ARP request for IP: ");
+        print_addr_ip_int(next_hop_ip);
+        struct sr_arpreq* queued_entry = sr_arpcache_queuereq(&sr->cache, next_hop_ip, packet, len, out_iface->name);
+        /* handle sending ARP request if necessary */
+        /* send_arp_request(sr, next_hop_ip, out_iface->name, queued_entry); */
     }
 
 }

@@ -5,7 +5,7 @@
 ## Contributions (per member)
 - **Victor Hurst**
   - Tasks: Handling the ARP Cache, IP Forwarding, Creating The Frames (Ethernet, IP,  ARP Requests etc.), ICMP Messages, ARP Replies and Requests, Handling IP Requests
-- **Member 2**
+- **Janani Gurram**
   - Tasks: All Of Testing, ARP Cache,  IP Forwarding, ICMP Messages, ARP Replies and Requests
  
 ## Implemented functions / files
